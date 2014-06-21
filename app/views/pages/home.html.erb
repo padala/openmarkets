@@ -22,20 +22,34 @@
 <!-- Insert script below -->
 <script>
     $(document).ready(function () {
+
+        //Returns the weekNumber for a given date
+        Date.prototype.getWeekNumber = function () {
+            var d = new Date(+this);
+            d.setHours(0, 0, 0);
+            d.setDate(d.getDate() + 4 - (d.getDay() || 7));
+            return Math.ceil((((d - new Date(d.getFullYear(), 0, 1)) / 8.64e7) + 1) / 7);
+        };
+
         $.getJSON("https://edgarsubmissions.firebaseio.com/.json", function (data) {
-        	//Preprocessing - Counting filings for a particular date.
-            var processedData = _.countBy(data.submissions, function (submission) {
+            //Preprocessing - Grouping filings for a particular iso week in a year.
+            var processedData = _.groupBy(data.submissions, function (submission) {
                 try {
-                    return submission.edgarSubmission.offeringData.signatureBlock.signatureDate;
+                    var date = new Date(submission.edgarSubmission.offeringData.signatureBlock.signatureDate);
+                    return date.getFullYear() + '' + date.getWeekNumber();
                 } catch (e) {
                     console.log("signatureDate is missing for submission: ", submission);
-                    return undefined;
+                    return ;
                 }
             });
 
             //Converting data into HighChart - Column data format
-            var chartData = _.map(processedData, function(item,key){
-            	return [ new Date(key).getTime(),item];
+            var chartData = _.map(processedData, function (item) {
+                try {
+                    return [new Date(item[0].edgarSubmission.offeringData.signatureBlock.signatureDate).getTime(), item.length];
+                } catch (e) {
+                    console.log("signatureDate is missing");
+                }
             });
 
             //Rendering chart with processedData
@@ -43,37 +57,37 @@
         });
 
         //Method to renderChart for Given Data
-        function renderChart(data){
-        	$('#container').highcharts({
-            chart: {
-                type: 'column'
-            },
-            title: {
-                text: 'Number of fillings by date'
-            },
-            xAxis: {
-                type: 'datetime',
-                labels: {
-                    rotation: -45,
-                    style: {
-                        fontSize: '13px',
-                        fontFamily: 'Verdana, sans-serif'
-                    }
-                }
-            },
-            yAxis: {
+        function renderChart(data) {
+            $('#container').highcharts({
+                chart: {
+                    type: 'column'
+                },
                 title: {
-                    text: 'Number of Filings'
-                }
-            },
-            legend: {
-                enabled: false
-            },
-            series: [{
-                name: 'Filings',
-                data: data
-            }]
-        });
+                    text: 'Number of fillings by Week'
+                },
+                xAxis: {
+                    type: 'datetime',
+                    labels: {
+                        rotation: -45,
+                        style: {
+                            fontSize: '13px',
+                            fontFamily: 'Verdana, sans-serif'
+                        }
+                    }
+                },
+                yAxis: {
+                    title: {
+                        text: 'Number of Filings'
+                    }
+                },
+                legend: {
+                    enabled: false
+                },
+                series: [{
+                    name: 'Filings',
+                    data: data
+                }]
+            });
         }
     });
 </script>
