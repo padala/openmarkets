@@ -23,7 +23,7 @@
 <script>
     $(document).ready(function () {
 
-        //Returns the weekNumber for a given date
+        // Returns the weekNumber for a given date
         Date.prototype.getWeekNumber = function () {
             var d = new Date(+this);
             d.setHours(0, 0, 0);
@@ -33,27 +33,42 @@
 
         $.getJSON("https://edgarsubmissions.firebaseio.com/.json", function (data) {
             //Preprocessing - Grouping filings for a particular iso week in a year.
-            var processedData = _.groupBy(data.submissions, function (submission) {
+            var validDate = new Date("2013-09-23");
+            var groupedData = _.groupBy(data.submissions, function (submission) {
                 try {
                     var date = new Date(submission.edgarSubmission.offeringData.signatureBlock.signatureDate);
-                    return date.getFullYear() + '' + date.getWeekNumber();
+
+                    //Check if date is greater than 23rd Sep'13
+                    if (date > validDate)
+                        return date.getFullYear() + '' + date.getWeekNumber();
+                    else
+                        return;
                 } catch (e) {
                     console.log("signatureDate is missing for submission: ", submission);
-                    return ;
+                    return;
                 }
+            });
+
+            //Removing data which doesn't contain data
+            var processedData = _.filter(groupedData, function (num, key) {
+                return key != "undefined";
             });
 
             //Converting data into HighChart - Column data format
             var chartData = _.map(processedData, function (item) {
                 try {
-                    return [new Date(item[0].edgarSubmission.offeringData.signatureBlock.signatureDate).getTime(), item.length];
+                    var date = new Date(item[0].edgarSubmission.offeringData.signatureBlock.signatureDate);
+                    var firstday = new Date(date.setDate(date.getDate() - date.getDay()));
+                    return [firstday.getTime(), item.length];
                 } catch (e) {
                     console.log("signatureDate is missing");
                 }
             });
 
             //Rendering chart with processedData
-            renderChart(chartData);
+            renderChart(_.sortBy(chartData, function (data) {
+                return data[0];
+            }));
         });
 
         //Method to renderChart for Given Data
